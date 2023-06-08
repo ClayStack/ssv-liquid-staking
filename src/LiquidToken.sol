@@ -55,9 +55,6 @@ contract LiquidToken is ERC20, ReentrancyGuard {
     /// @notice Number of exited validators
     uint256 public exitedValidators;
 
-    // /// @notice Number of exit requests
-    // uint256 public exitRequestsCount;
-
     /// @notice Total balance on active validators in the Consensus Layer state
     uint256 public activeValidatorsBalance;
 
