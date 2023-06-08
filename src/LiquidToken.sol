@@ -32,7 +32,7 @@ contract LiquidToken is ERC20, ReentrancyGuard {
     }
 
     /// @notice Instance of deposit contract.
-    IDepositContract immutable depositContract;
+    IDepositContract constant depositContract = IDepositContract(address(0x0)); // TODO: recheck deposit contract address before deploying
 
     /// @notice Address of report oracle
     address public oracle;
@@ -77,12 +77,9 @@ contract LiquidToken is ERC20, ReentrancyGuard {
     /// @dev The default value of `decimals` is 18.
     /// @param _name : Name of the token.
     /// @param _symbol : Symbol of the token.
-    /// @param _depositContract : Address of the deposit contract.
-    constructor(string memory _name, string memory _symbol, address _depositContract) ERC20(_name, _symbol) {
-        require(_depositContract != address(0), "Invalid depositContract address");
+    constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {
         oracle = msg.sender;
         admin = msg.sender;
-        depositContract = IDepositContract(_depositContract);
     }
 
     /** USER OPERATIONS **/
