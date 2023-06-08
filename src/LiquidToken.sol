@@ -124,7 +124,7 @@ contract LiquidToken is ERC20, ReentrancyGuard {
 
     /// @notice Allows the user to claim an order.
     /// @param _orderId : Id of the order to be claimed.
-    function claim(uint256 _orderId) external nonReentrant{
+    function claim(uint256 _orderId) external nonReentrant {
         require(!withdrawOrders[msg.sender][_orderId].claimed, "Order already claimed");
         require(withdrawOrders[msg.sender][_orderId].amount <= address(this).balance, "Order not claimable");
 
@@ -212,7 +212,7 @@ contract LiquidToken is ERC20, ReentrancyGuard {
         for (uint256 i = 0; i < _validatorCount; i++) {
             Validator memory validator = _selectNextValidator();
 
-            //slither-disable-next-line reentrancy-eth 
+            //slither-disable-next-line reentrancy-eth
             depositContract.deposit{value: DEPOSIT_SIZE}(
                 validator.pubkey,
                 validator.withdrawal_credentials,
@@ -291,8 +291,7 @@ contract LiquidToken is ERC20, ReentrancyGuard {
     receive() external payable {}
 
     /** EVENTS **/
-    
+
     /// @notice Event for oracle report
     event OracleReportEvent(uint256 activeValidators, uint256 activeValidatorsBalance, uint256 exitedValidators);
-
 }
