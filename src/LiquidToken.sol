@@ -2,10 +2,10 @@
 pragma solidity 0.8.18;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interfaces/IDepositContract.sol";
-import "forge-std/console.sol";
 
-contract LiquidToken is ERC20 {
+contract LiquidToken is ERC20, ReentrancyGuard {
     /// @notice Constants
     uint256 private constant PRECISION = 1e18;
     uint256 private constant DEPOSIT_SIZE = 32 ether;
@@ -32,7 +32,7 @@ contract LiquidToken is ERC20 {
     }
 
     /// @notice Instance of deposit contract.
-    IDepositContract private depositContract;
+    IDepositContract immutable depositContract;
 
     /// @notice Address of report oracle
     address public oracle;
@@ -55,8 +55,8 @@ contract LiquidToken is ERC20 {
     /// @notice Number of exited validators
     uint256 public exitedValidators;
 
-    /// @notice Number of exit requests
-    uint256 public exitRequestsCount;
+    // /// @notice Number of exit requests
+    // uint256 public exitRequestsCount;
 
     /// @notice Total balance on active validators in the Consensus Layer state
     uint256 public activeValidatorsBalance;
@@ -92,7 +92,7 @@ contract LiquidToken is ERC20 {
 
     /// @notice Sends Token to contract and mints liquidToken to msg.sender.
     /// @return amountToMint of liquidToken minted
-    function deposit() external payable returns (uint256 amountToMint) {
+    function deposit() external payable nonReentrant returns (uint256 amountToMint) {
         require(msg.value > 0, "Invalid Amount");
         amountToMint = _exchangeToken(msg.value);
         _mint(msg.sender, amountToMint);
@@ -110,7 +110,7 @@ contract LiquidToken is ERC20 {
     /// @notice Burns liquidToken from user and starts unstaking process from Ethereum
     /// @param _amount Amount of liquidToken to be withdrawn.
     /// @return id of the withdraw order.
-    function withdraw(uint _amount) external returns (uint256 id) {
+    function withdraw(uint _amount) external nonReentrant returns (uint256 id) {
         require(_amount > 0, "Invalid Amount");
         require(balanceOf(msg.sender) >= _amount, "Insufficient balance");
 
@@ -127,13 +127,14 @@ contract LiquidToken is ERC20 {
 
     /// @notice Allows the user to claim an order.
     /// @param _orderId : Id of the order to be claimed.
-    function claim(uint256 _orderId) external {
+    function claim(uint256 _orderId) external nonReentrant{
         require(!withdrawOrders[msg.sender][_orderId].claimed, "Order already claimed");
         require(withdrawOrders[msg.sender][_orderId].amount <= address(this).balance, "Order not claimable");
 
         withdrawOrders[msg.sender][_orderId].claimed = true;
         pendingWithdrawals -= withdrawOrders[msg.sender][_orderId].amount;
 
+        //slither-disable-next-line low-level-calls
         (bool success, ) = msg.sender.call{value: withdrawOrders[msg.sender][_orderId].amount}("");
         require(success, "Transfer of funds to user failed");
     }
@@ -187,7 +188,7 @@ contract LiquidToken is ERC20 {
         bytes calldata _withdrawal_credentials,
         bytes calldata _signature,
         bytes32 _deposit_data_root
-    ) external returns (bool) {
+    ) external nonReentrant returns (bool) {
         require(msg.sender == admin, "Only admin can register validator");
         require(_pubkey.length == 48, "Invalid pubkey length");
         require(_withdrawal_credentials.length == 32, "Invalid withdrawal_credentials length");
@@ -213,6 +214,8 @@ contract LiquidToken is ERC20 {
 
         for (uint256 i = 0; i < _validatorCount; i++) {
             Validator memory validator = _selectNextValidator();
+
+            //slither-disable-next-line reentrancy-eth 
             depositContract.deposit{value: DEPOSIT_SIZE}(
                 validator.pubkey,
                 validator.withdrawal_credentials,
@@ -251,7 +254,7 @@ contract LiquidToken is ERC20 {
         uint256 _validatorsCount,
         uint256 _validatorsBalance,
         uint256 _validatorsExited
-    ) external {
+    ) external nonReentrant {
         require(msg.sender == oracle, "Invalid oracle");
         require(_reportTimestamp > oracleReportTimestamp, "Invalid reportTimestamp");
         require(_validatorsCount <= depositedValidators, "Invalid validatorsCount");
@@ -265,6 +268,9 @@ contract LiquidToken is ERC20 {
         activeValidators = _validatorsCount;
         activeValidatorsBalance = _validatorsBalance;
         exitedValidators = _validatorsExited;
+
+        // emit event
+        emit OracleReportEvent(activeValidators, activeValidatorsBalance, exitedValidators);
     }
 
     /** ADMIN **/
@@ -273,6 +279,7 @@ contract LiquidToken is ERC20 {
     /// @param _oracle : Address of the oracle.
     function setOracle(address _oracle) external {
         require(msg.sender == admin, "Only admin can set oracle");
+        require(_oracle != address(0), "Invalid oracle address");
         oracle = _oracle;
     }
 
@@ -280,8 +287,15 @@ contract LiquidToken is ERC20 {
     /// @param _admin : Address of the admin.
     function setAdmin(address _admin) external {
         require(msg.sender == admin, "Only admin can set admin");
+        require(_admin != address(0), "Invalid admin address");
         admin = _admin;
     }
 
     receive() external payable {}
+
+    /** EVENTS **/
+    
+    /// @notice Event for oracle report
+    event OracleReportEvent(uint256 activeValidators, uint256 activeValidatorsBalance, uint256 exitedValidators);
+
 }
