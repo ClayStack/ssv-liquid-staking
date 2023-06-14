@@ -2,6 +2,9 @@
 cache/
 out/
 
+# node modules
+/node_modules
+
 # Ignores development broadcast logs
 !/broadcast
 /broadcast/*/31337/
@@ -12,3 +15,4 @@ docs/
 
 # Dotenv file
 .env
+.idea
