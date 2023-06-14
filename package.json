@@ -2,7 +2,8 @@
   "scripts": {
     "test": "forge test -vv",
     "prettier": "npx prettier --write '{test,scripts,src,tasks}/{**/*,*}.{js,ts,jsx,tsx,sol}'",
-    "build": "forge build --force"
+    "build": "forge build --force",
+    "slither": "slither ./src"
   },
   "dependencies": {
     "prettier": "^2.8.8",
