@@ -23,6 +23,7 @@ contract LiquidToken is ERC20, ReentrancyGuard {
     /// @param withdrawal_credentials : Withdrawal credentials of the validator.
     /// @param signature : Signature of the validator.
     /// @param deposit_data_root : Deposit data root of the validator.
+    /// @param active : True if the validator is active.
     struct Validator {
         bytes pubkey;
         bytes withdrawal_credentials;
@@ -45,6 +46,9 @@ contract LiquidToken is ERC20, ReentrancyGuard {
 
     /// @notice Nonce of validators ids registered
     uint256 public validatorNonce;
+
+    /// @notice Nonce of validators ids exited
+    uint256 public exitValidatorNonce;
 
     /// @notice Number of deposited validators
     uint256 public depositedValidators;
@@ -202,6 +206,17 @@ contract LiquidToken is ERC20, ReentrancyGuard {
         return true;
     }
 
+    /// @notice Chooses validator for exit and marks as inactive.
+    function exitValidator() external nonReentrant {
+        require(msg.sender == admin, "Only admin can exit validator");
+
+        uint256 id = exitValidatorNonce++;
+        Validator memory validator = validators[exitValidatorNonce];
+        require(validator.active, "Pubkey not registered");
+
+        validators[id].active = false;
+    }
+
     /// @notice Deposit to consensus layer number of validators if available.
     /// @param _validatorCount : Number of validators to deposit.
     function _depositConsensus(uint256 _validatorCount) internal {
@@ -222,9 +237,10 @@ contract LiquidToken is ERC20, ReentrancyGuard {
         }
     }
 
-    /// @notice Sequential validator selection
+    /// @notice Sequential validator selection and set active
     function _selectNextValidator() internal returns (Validator memory validator) {
         uint256 id = ++depositedValidators;
+        validators[id].active = true;
         validator = validators[id];
         require(validator.pubkey.length == 48, "Next validator invalid");
     }
