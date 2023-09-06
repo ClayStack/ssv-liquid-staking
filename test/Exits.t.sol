@@ -25,6 +25,7 @@ contract ExitsTest is TestUtil {
 
         // admin triggers exit, and oracle confirms receipt
         depositContract.mockExit(1, address(liquidToken), 0);
+        liquidToken.exitValidator();
         _oracleReport();
         exchangeRate = liquidToken.getExchangeRate();
         assertEq(exchangeRate, 1 ether);
